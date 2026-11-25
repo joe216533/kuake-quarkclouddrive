@@ -3,7 +3,7 @@ name: kuake-quarkclouddrive
 description: "夸克网盘正式资产操作技能：上传、转存（另存）、下载、创建分享，并强制 SHA256 完整性校验。用于把工作流正式资产存入夸克网盘、从分享链接取回资产、对外发布正式包。当任务涉及把文件上传到夸克、转存他人分享、从网盘下载资产、生成分享链接，或需要校验下载文件完整性时使用。"
 description_zh: "夸克网盘资产操作：上传 / 转存 / 下载 / 分享，含完整性校验与失败升级规则"
 description_en: "Quark Drive asset operations: upload, save-as, download, share, with integrity checks"
-version: "1.0.2"
+version: "1.0.3"
 agent_created: true
 allowed-tools: Read, Bash
 display_name: "kuake-quarkclouddrive"
@@ -125,32 +125,48 @@ node runtime/quark-drive.cjs upload "<本地路径>" [--parent-fid <目录FID>] 
 ## 3. 转存（另存）
 
 ```bash
-node runtime/quark-drive.cjs saveas --url "<分享链接>" [--to-pdir-fid <目录FID>] \
+node runtime/quark-drive.cjs saveas --url "<分享链接>" [--to-pdir-path "<网盘目录路径>"] \
   --session-id <会话ID> --session-input "<用户原话>"
 ```
 
-### 3.1 创建者免转存例外
+### 3.1 创建者本人分享：免转存直接下载例外
 
-页面出现以下任一反馈，说明当前账号就是该分享的创建者，**跳过转存直接下载**：
+正常情况下，下载他人分享的文件，应先执行 saveas 转存，再执行 download 下载。但当当前账号下载的是自己创建的分享时，夸克可能禁止将该分享再次转存。此时应跳过转存，直接下载分享对应的文件。
 
-- 页面提示「该链接为本人发出，不支持保存」；
-- 保存返回 `41017 用户禁止转存自己的分享`。
+**创建者例外的权威判据仅有以下两项**：
 
-命中后：
+- 页面明确提示「该链接为本人发出，不支持保存」；
+- `saveas` 返回错误码 `41017`，提示「用户禁止转存自己的分享」。
 
-- 不再尝试转存，不重复点击保存；
+命中任意一项，即认定当前操作触发了创建者免转存例外：
+
+- 停止重复转存尝试，跳过 `saveas`，直接执行 `download`（第 4 节）；
 - 不要求核验手机号、不检查是否 159 开头、不要求凑齐多项证据；
-- 直接进入第 4 节下载；
-- 在报告里写明命中的是哪一条原文。
+- 在报告里写明命中的是哪一条原文；
+- **本例外只免除转存，不免除下载与 SHA256 校验**。
 
-**本例外只免除转存，不免除下载与 SHA256 校验。**
+未命中上述两项时，必须按正常流程转存，不得仅凭猜测认定为本人分享，也不得无限重复转存。
 
-页面上没有任何上述提示时，必须正常转存，不得自行推定为创建者。
+**明确禁止使用 `is_owner` 判定创建者身份**：
+
+此前曾考虑用 `share-detail` 返回的 `is_owner` 字段区分本人分享与非本人分享，**真实业务测试已证伪该字段的判别能力**：
+
+- 156 账号下载他人分享时，`is_owner` 返回 `0`；
+- 159 账号下载自己创建的分享时，`is_owner` **仍返回 `0`**，随后 `saveas` 返回 `41017`，跳过转存直接下载成功（13,760 B，SHA256 一致）。
+
+同一个值 `0` 同时出现在本人与非本人分享场景中，无法区分创建者身份。因此：
+
+- 不得依据 `is_owner=0` 决定必须转存；
+- 不得依据 `is_owner=1` 决定可以直接下载；
+- 无论该字段返回 0、1 或其他值，均不得将其作为创建者识别、转存决策或直接下载决策的依据；
+- 该字段可保留在原始接口记录中，但仅作为未验证信息，不参与业务决策。
+
+本规则以页面明确提示和实际错误码为准，不得根据 `is_owner` 推断或覆盖实际结果。下载侧不核验手机号，不要求必须使用 159 账号。
 
 ## 4. 下载
 
 ```bash
-node runtime/quark-drive.cjs download --fid <文件FID> --to "<本地目录>" \
+node runtime/quark-drive.cjs download --fid <文件FID> --output-dir "<本地目录>" \
   --session-id <会话ID> --session-input "<用户原话>"
 ```
 
@@ -177,7 +193,8 @@ node runtime/quark-drive.cjs download --fid <文件FID> --to "<本地目录>" \
 ## 5. 分享
 
 ```bash
-node runtime/quark-drive.cjs share --fids <FID列表> [--title "<标题>"] \
+node runtime/quark-drive.cjs share <FID1> [FID2 ...] --title "<标题>" \
+  --url-type 1 --expired-type 1 \
   --session-id <会话ID> --session-input "<用户原话>"
 ```
 
