@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * quark-asset-ops 能力验证器
+ * kuake-quarkclouddrive 能力验证器
  *
  * 验证四件事，缺一不可：
  *   1. CLI 可执行且版本达标
@@ -61,7 +61,7 @@ function cmpVersion(a, b) {
 }
 
 function main() {
-  console.log('=== quark-asset-ops 能力验证 ===\n');
+  console.log('=== kuake-quarkclouddrive 能力验证 ===\n');
 
   // 1. CLI 存在且可执行
   if (!fs.existsSync(CLI_PATH)) {
@@ -121,7 +121,7 @@ function summary() {
   console.log(`\n=== 结果: ${passed} 通过 / ${failed} 未通过 ===`);
   if (authPending) {
     console.log('结论：【待授权】组件与命令已就绪，账号尚未授权。');
-    console.log('下一步：运行 node runtime/quark-drive.cjs login，把二维码或链接给用户；授权后重跑本验证。');
+    console.log('下一步：运行 node runtime/quark-drive.cjs login 取二维码给用户；用户扫码后必须再跑一次同样的 login 换取 token（返回 status:confirmed），然后重跑本验证。');
     process.exit(2);
   }
   if (failed > 0) {

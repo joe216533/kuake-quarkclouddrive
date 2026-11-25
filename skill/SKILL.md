@@ -3,7 +3,7 @@ name: kuake-quarkclouddrive
 description: "夸克网盘正式资产操作技能：上传、转存（另存）、下载、创建分享，并强制 SHA256 完整性校验。用于把工作流正式资产存入夸克网盘、从分享链接取回资产、对外发布正式包。当任务涉及把文件上传到夸克、转存他人分享、从网盘下载资产、生成分享链接，或需要校验下载文件完整性时使用。"
 description_zh: "夸克网盘资产操作：上传 / 转存 / 下载 / 分享，含完整性校验与失败升级规则"
 description_en: "Quark Drive asset operations: upload, save-as, download, share, with integrity checks"
-version: "1.0.0"
+version: "1.0.1"
 agent_created: true
 allowed-tools: Read, Bash
 display_name: "kuake-quarkclouddrive"
@@ -58,15 +58,25 @@ node scripts/install.js
 
 实测对照：同一账号、同一文件，境外出口下载失败（1007）；切国内直连后 2 秒内完成，大小与 SHA256 均正确。
 
-## 1. 账号授权
+## 1. 账号授权（三步，不能省第二步）
 
-未授权时执行：
+**CLI 不会自动轮询授权结果。** 用户扫码后如果直接跑 verify，会返回 `-103 未登录`。必须自己再跑一次 login 换取 token。
 
 ```bash
+# 第 1 次：取二维码/链接给用户
 node runtime/quark-drive.cjs login --session-id <会话ID> --session-input "<用户原话>"
+
+# 用户确认已扫码后：第 2 次 login，换取 token 并落盘
+node runtime/quark-drive.cjs login --session-id <会话ID> --session-input "<用户原话>"
+# 期望返回 code:0 且 status:confirmed
+
+# 第 3 步：验证
+node scripts/verify.js
 ```
 
-然后把**二维码或授权链接**提供给用户，放在回复末尾，一句话说明要做什么。授权完成后重跑 `node scripts/verify.js`，确认退出码为 0。
+把**二维码或授权链接**提供给用户，放在回复末尾，一句话说明要做什么。
+
+**登录态位置因环境而异**（实测见过 `~/.quarkclouddrive/config.json`，也见过技能目录下 `workbuddy/config.json`）。不要写死路径，以 CLI 输出与实际检查为准；**该文件含 token，严禁随包分发或提交到代码仓库**。
 
 **规范**：
 
