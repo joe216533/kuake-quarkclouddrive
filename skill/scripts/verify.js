@@ -93,7 +93,7 @@ function main() {
   } else {
     detail = '调用失败';
   }
-  if (authed) record('账号已授权', true, detail);
+  if (authed) record('账号已授权', true, detail + '（沿用既有登录态，本次未重新授权）');
   else { authPending = true; console.log(`PENDING  账号已授权  ${detail}（需用户扫码，非安装缺陷）`); }
 
   // 3. 四条必需命令

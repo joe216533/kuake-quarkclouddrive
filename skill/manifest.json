@@ -1,7 +1,7 @@
 {
   "id": "kuake-quarkclouddrive",
   "name": "夸克资产操作",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "夸克网盘正式资产操作：上传 / 转存 / 下载 / 分享，含完整性校验与失败升级规则",
   "entry": "SKILL.md",
   "capabilities": [
@@ -38,5 +38,5 @@
     "zh": "夸克资产操作",
     "en": "Quark Asset Ops"
   },
-  "package": "kuake-quarkclouddrive-v1.0.1.zip"
+  "package": "kuake-quarkclouddrive-v1.0.2.zip"
 }

@@ -3,7 +3,7 @@ name: kuake-quarkclouddrive
 description: "夸克网盘正式资产操作技能：上传、转存（另存）、下载、创建分享，并强制 SHA256 完整性校验。用于把工作流正式资产存入夸克网盘、从分享链接取回资产、对外发布正式包。当任务涉及把文件上传到夸克、转存他人分享、从网盘下载资产、生成分享链接，或需要校验下载文件完整性时使用。"
 description_zh: "夸克网盘资产操作：上传 / 转存 / 下载 / 分享，含完整性校验与失败升级规则"
 description_en: "Quark Drive asset operations: upload, save-as, download, share, with integrity checks"
-version: "1.0.1"
+version: "1.0.2"
 agent_created: true
 allowed-tools: Read, Bash
 display_name: "kuake-quarkclouddrive"
@@ -77,6 +77,24 @@ node scripts/verify.js
 把**二维码或授权链接**提供给用户，放在回复末尾，一句话说明要做什么。
 
 **登录态位置因环境而异**（实测见过 `~/.quarkclouddrive/config.json`，也见过技能目录下 `workbuddy/config.json`）。不要写死路径，以 CLI 输出与实际检查为准；**该文件含 token，严禁随包分发或提交到代码仓库**。
+
+### 1.1 沿用既有登录态时的验证边界
+
+覆盖升级时如果保留了旧登录态（如 `workbuddy/config.json` 或 `~/.quarkclouddrive/config.json`），新版本会**直接通过 verify 而不触发扫码**。这是预期行为，但必须说清它能证明什么、不能证明什么：
+
+| 情形 | 可以得出的结论 |
+|-|-|
+| 沿用旧 token，verify 通过 | 旧 token 当前有效，基础检查通过 |
+| 本次重新扫码，verify 通过 | 本次授权流程完成，基础检查通过 |
+| 真实业务操作通过 | 对应功能在当前账号与环境已实测可用 |
+| 未做真实业务操作 | 对应业务权限**仍未验证** |
+
+**两条禁令**：
+
+- 不得把"沿用旧 token + verify 通过"表述为"授权已验证"或"业务权限已验证"；
+- 不得把"重新扫码成功"当作全部业务权限齐全——重新授权只证明授权流程成功，上传/分享能否使用仍取决于账号权限。
+
+按变更类型决定要不要实跑：仅改文档 → 只跑 verify；涉及授权方式、token/scope、上游 CLI 大版本、业务接口实现 → 必须实跑对应功能。
 
 **规范**：
 
@@ -194,7 +212,17 @@ node runtime/quark-drive.cjs share --fids <FID列表> [--title "<标题>"] \
 
 **不得把"已执行"写成"已验证"，不得把计划写成结果。**
 
-## 8. 禁止事项
+## 8.1 备份必须放在技能目录之外
+
+**禁止**在技能目录内创建 `.backup/`、`old/`、`previous/`、`_bak/` 等备份目录。
+
+原因（已实测）：打包脚本 `package_skill.py` 使用 `rglob('*')` 收集文件，**不做任何过滤**，技能目录内的备份会被原样打进下一个分发包，可能带出旧代码、旧配置甚至凭据。
+
+正确做法：备份放到技能目录之外的固定位置（例如 `D:\备份\skills\`），并在文件名里带日期与版本。
+
+发布前 `preflight.js` 会对包内隐藏目录与备份命名做拦截，但**拦截只是第二道防线，第一道是不要把备份放进技能目录**。
+
+## 8.2 禁止事项
 
 - 禁止在账号判据不满足时上传、建分享或维护 manifest；
 - 禁止把创建者例外扩大成"任何账号都可以跳过转存"；
